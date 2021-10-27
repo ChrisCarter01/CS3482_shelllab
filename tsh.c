@@ -167,7 +167,10 @@ void eval(char *cmdline)
         Sigprocmask(SIG_BLOCK, &all_set, NULL);     //Block all signals while adding to the job list.
         //Add jobs to job list.
         if (!bg) addjob(jobs, pid, FG, cmdline);
-        else addjob(jobs, pid, BG, cmdline);
+        else {
+            addjob(jobs, pid, BG, cmdline);
+            printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+        }
         
         Sigprocmask(SIG_SETMASK, &last_set, NULL);  //Restore the original mask to the parent.
         //If BG is false, than the parent needs to wait for the child to finish processing.
