@@ -156,24 +156,23 @@ void eval(char *cmdline)
 
     //If the builtin cmd function returns zero, then the given command is NOT built in.
     if(builtin_cmd(argv) == 0) {
-        Sigprocmask(SIG_BLOCK, &one_set, &last_set);
-        if ((pid = Fork() == 0)) {  
+        Sigprocmask(SIG_BLOCK, &one_set, &last_set);    //Block sig child
+        
+        if ((pid = Fork()) == 0) {  
             //This section of code will be executed by the child process.
-            Sigprocmask(SIG_SETMASK, &last_set, NULL);
+            Sigprocmask(SIG_SETMASK, &last_set, NULL);  //Restore previous mask for the child
             Exec(argv[0], argv);
         }
         //Since the child process calls exit(), this section of code will only be excuted by the parent process.
-        Sigprocmask(SIG_BLOCK, &all_set, NULL);
-        addjob(jobs, pid, bg + 1, cmdline);
-        Sigprocmask(SIG_SETMASK, &last_set, NULL);
+        Sigprocmask(SIG_BLOCK, &all_set, NULL);     //Block all signals while adding to the job list.
+        //Add jobs to job list.
+        if (!bg) addjob(jobs, pid, FG, cmdline);
+        else addjob(jobs, pid, BG, cmdline);
+        
+        Sigprocmask(SIG_SETMASK, &last_set, NULL);  //Restore the original mask to the parent.
         //If BG is false, than the parent needs to wait for the child to finish processing.
         if (!bg) {
-            int status;
-            if(waitpid(pid, &status, 0) < 0) {
-                unix_error("waitfg: waitpid error"); 
-            } else {
-                //printf("%d %s", pid, cmdline);
-            }
+            waitfg(pid);
         }
     }
     return; 
@@ -204,6 +203,9 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    while(fgpid(jobs) == pid) {
+        sleep(5);
+    }
     return;
 }
 
@@ -220,6 +222,16 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+    //printf("Handling Child\n");
+    int status;
+    pid_t pid;
+    pid = waitpid(-1, &status, 0);
+    //printf("PID: %d\nStatus: %d\n", pid, status);
+    if(WIFEXITED(status)) {
+        //Check if the child terminated normally.
+        //Remove the child from the job list.
+        deletejob(jobs, pid);
+    }
     return;
 }
 

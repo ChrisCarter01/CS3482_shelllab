@@ -50,7 +50,11 @@ handler_t *Signal(int signum, handler_t *handler)
 
 int Fork() {
     pid_t pid;
-    if ((pid = fork()) < 0) unix_error("Fork Error");
+    pid = fork();
+    if (pid < 0) {
+         unix_error("Fork Error");
+         exit(0);
+    }
     return pid;
 }
 
