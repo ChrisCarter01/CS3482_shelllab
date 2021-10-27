@@ -5,6 +5,9 @@
 #include <string.h>
 #include "wrappers.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+
 //Add the missing wrappers to this file (for fork, exec, sigprocmask, etc.)
 //Note that exec does not return a value (void function). If an error
 //occurs, it will simply output <command>: Command not found, 
@@ -45,4 +48,39 @@ handler_t *Signal(int signum, handler_t *handler)
     return (old_action.sa_handler);
 }
 
+int Fork() {
+    pid_t pid;
+    if ((pid = fork()) < 0) unix_error("Fork Error");
+    return pid;
+}
 
+void Exec(char *cmdline, char** argv) {
+    if (execv(cmdline, argv) < 0) {
+        printf("%s: Command not found", argv[0]);
+        exit(0);
+    }
+}
+
+void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+    if(sigprocmask(how, set, oldset) < 0) {
+        unix_error("Sigprocmask Error");
+    }
+}
+
+void SigFillSet(sigset_t* set) {
+    if(sigfillset(set) < 0) {
+        unix_error("SigFillSet Error");
+    }
+}
+
+void SigEmptySet(sigset_t* set) {
+    if(sigemptyset(set) < 0) {
+        unix_error("SigEmptySet Error");
+    }
+}
+
+void SigAddSet(sigset_t* set, int signal) {
+    if(sigaddset(set, signal) < 0) {
+        unix_error("SigAddSet Error");
+    }
+}

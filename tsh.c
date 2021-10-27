@@ -11,6 +11,8 @@
 #include "jobs.h"      //prototypes for functions that manage the jobs list
 #include "wrappers.h"  //prototypes for functions in wrappers.c
 
+#include <signal.h> 
+
 /* Misc manifest constants */
 #define MAXLINE    1024   /* max line size */
 #define MAXARGS     128   /* max args on a command line */
@@ -135,8 +137,46 @@ int main(int argc, char **argv)
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
 void eval(char *cmdline) 
-{
-    return;
+{   
+    sigset_t all_set, one_set, last_set;
+    SigFillSet(&all_set);
+    SigEmptySet(&one_set);
+    SigAddSet(&one_set, SIGCHLD);
+
+    //Declare an array of char pointers to hold arguements.
+    char* argv[MAXARGS];
+    char buffer[MAXLINE];
+    int bg = 0;
+    pid_t pid;
+
+    strcpy(buffer, cmdline);
+    bg = parseline(buffer, argv);
+    //If arg0 is null then the line is empty.
+    if (argv[0] == NULL) return;
+
+    //If the builtin cmd function returns zero, then the given command is NOT built in.
+    if(builtin_cmd(argv) == 0) {
+        Sigprocmask(SIG_BLOCK, &one_set, &last_set);
+        if ((pid = Fork() == 0)) {  
+            //This section of code will be executed by the child process.
+            Sigprocmask(SIG_SETMASK, &last_set, NULL);
+            Exec(argv[0], argv);
+        }
+        //Since the child process calls exit(), this section of code will only be excuted by the parent process.
+        Sigprocmask(SIG_BLOCK, &all_set, NULL);
+        addjob(jobs, pid, bg + 1, cmdline);
+        Sigprocmask(SIG_SETMASK, &last_set, NULL);
+        //If BG is false, than the parent needs to wait for the child to finish processing.
+        if (!bg) {
+            int status;
+            if(waitpid(pid, &status, 0) < 0) {
+                unix_error("waitfg: waitpid error"); 
+            } else {
+                //printf("%d %s", pid, cmdline);
+            }
+        }
+    }
+    return; 
 }
 
 /* 
@@ -145,6 +185,9 @@ void eval(char *cmdline)
  */
 int builtin_cmd(char **argv) 
 {
+    //If argv[0] is equal to 0, then quit the shell.
+    if (!(strcmp(argv[0], "quit"))) exit(0);
+
     return 0;     /* not a builtin command */
 }
 
