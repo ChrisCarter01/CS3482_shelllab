@@ -60,7 +60,7 @@ int Fork() {
 
 void Exec(char *cmdline, char** argv) {
     if (execv(cmdline, argv) < 0) {
-        printf("%s: Command not found", argv[0]);
+        printf("%s: Command not found\n", argv[0]);
         exit(0);
     }
 }

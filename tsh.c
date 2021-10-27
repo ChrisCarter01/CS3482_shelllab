@@ -189,6 +189,10 @@ int builtin_cmd(char **argv)
 {
     //If argv[0] is equal to 0, then quit the shell.
     if (!(strcmp(argv[0], "quit"))) exit(0);
+    if (!(strcmp(argv[0], "jobs"))) {
+        listjobs(jobs);
+        return 1;
+    }
 
     return 0;     /* not a builtin command */
 }
@@ -227,15 +231,16 @@ void sigchld_handler(int sig)
 {
     //printf("Handling Child\n");
     int status;
-    pid_t pid;
-    pid = waitpid(-1, &status, 0);
-    //printf("PID: %d\nStatus: %d\n", pid, status);
-    if(WIFEXITED(status)) {
-        //Check if the child terminated normally.
-        //Remove the child from the job list.
-        deletejob(jobs, pid);
+    pid_t pid = 1;
+    while(pid > 0) {
+        pid = waitpid(-1, &status, WNOHANG | WUNTRACED);
+        //printf("PID: %d\nStatus: %d\n", pid, status);
+        if(WIFEXITED(status)) {
+            //Check if the child terminated normally.
+            //Remove the child from the job list.
+            deletejob(jobs, pid);
+        }
     }
-    return;
 }
 
 /* 
