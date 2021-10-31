@@ -198,6 +198,10 @@ int builtin_cmd(char **argv)
         do_bgfg(argv);
         return 1;
     }
+    if (!(strcmp(argv[0], "fg"))) {
+        do_bgfg(argv);
+        return 1;
+    }
 
     return 0;     /* not a builtin command */
 }
@@ -224,6 +228,13 @@ void do_bgfg(char **argv)
         job_t* job = getjobpid(jobs, pid);
         printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
         job->state = BG;
+    }
+    if (!(strcmp(argv[0], "fg"))) {
+        Kill(pid, SIGCONT);
+        job_t* job = getjobpid(jobs, pid);
+        //printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+        job->state = FG;
+        waitfg(pid);
     }
     return;
 }
