@@ -194,6 +194,10 @@ int builtin_cmd(char **argv)
         listjobs(jobs);
         return 1;
     }
+    if (!(strcmp(argv[0], "bg"))) {
+        do_bgfg(argv);
+        return 1;
+    }
 
     return 0;     /* not a builtin command */
 }
@@ -203,6 +207,24 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    pid_t pid;
+    //test if the first charcter of argv[1] is a % sign
+    if(argv[1][0] != '%') {
+        //The first arguement corresponds to the PID of the desired process
+        pid = atoi(argv[1]);
+    } else {
+        //The first arguement corresponds to the job number of the desired process
+        int jobid = atoi(argv[1] + 1);
+        // printf("Found JID = %d\n", jobid);
+        pid = getjobjid(jobs, jobid)->pid;
+    }
+    // printf("Found PID = %d\n", pid);
+    if (!(strcmp(argv[0], "bg"))) {
+        Kill(pid, SIGCONT);
+        job_t* job = getjobpid(jobs, pid);
+        printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+        job->state = BG;
+    }
     return;
 }
 
@@ -211,7 +233,7 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    while(fgpid(jobs) == pid) {
+    while(fgpid(jobs) == pid && getjobpid(jobs, pid)->state == FG) {
         sleep(5);
     }
     return;
@@ -230,7 +252,6 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    //printf("Handling Child\n");
     int status;
     sigset_t all_set, last_set;
     SigFillSet(&all_set);
@@ -238,7 +259,8 @@ void sigchld_handler(int sig)
 
     while(pid > 0) {
         pid = waitpid(-1, &status, WNOHANG | WUNTRACED);
-        //printf("PID: %d\nStatus: %d\n", pid, status);
+        
+        // printf("PID: %d\nStatus: %d\n", pid, status);
         if(WIFEXITED(status)) {
             Sigprocmask(SIG_BLOCK, &all_set, &last_set);    //Block all signals
             //Check if the child terminated normally.
@@ -246,16 +268,23 @@ void sigchld_handler(int sig)
             deletejob(jobs, pid);
             Sigprocmask(SIG_SETMASK, &last_set, NULL);    //Unblock all signals
             
-        } else if(WIFSIGNALED(status)) {
+        }
+        if(WIFSIGNALED(status)) {
             Sigprocmask(SIG_BLOCK, &all_set, &last_set);    //Block all signals
             //Check if child terminated abnormally (due to SIGINT or other signal).
-            //printf("Getting Job\n");
             job_t job = *getjobpid(jobs, pid);
-            //printf("Printing Job\n");
             printf("Job [%d] (%d) terminated by signal %d\n", job.jid, job.pid, status);
-            //printf("Deleting Job\n");
             deletejob(jobs, job.pid);
-            //printf("Jobs Done\n");
+            status = 0; //Reset status so this code block will not repeat itself.
+            
+            Sigprocmask(SIG_SETMASK, &last_set, NULL);    //Unblock all signals
+        }
+        if(WIFSTOPPED(status)) {
+            Sigprocmask(SIG_BLOCK, &all_set, &last_set);    //Block all signals
+            //Check if child terminated abnormally (due to SIGINT or other signal).
+            job_t* job = getjobpid(jobs, pid);
+            printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, WSTOPSIG(status));
+            job->state = ST;
             status = 0; //Reset status so this code block will not repeat itself.
             
             Sigprocmask(SIG_SETMASK, &last_set, NULL);    //Unblock all signals
@@ -270,6 +299,7 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    // printf("Handling SIGINT\n");
     pid_t fg = fgpid(jobs);
     Kill(fg, SIGINT);
     return;
@@ -282,6 +312,8 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    pid_t fg = fgpid(jobs);
+    Kill(fg, SIGTSTP);
     return;
 }
 

@@ -94,3 +94,9 @@ void Kill(pid_t pid, int signal) {
         unix_error("Kill Error");
     }
 }
+
+void Killpg(pid_t pid, int signal) {
+    if(killpg(pid, signal) < 0) {
+        unix_error("Killpg Error");
+    }
+}

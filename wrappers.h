@@ -12,3 +12,4 @@ void SigFillSet(sigset_t* set);
 void SigEmptySet(sigset_t* set);
 void SigAddSet(sigset_t* set, int signal);
 void Kill(pid_t pid, int signal);
+void Killpg(pid_t pid, int signal);
