@@ -230,7 +230,7 @@ void do_bgfg(char **argv)
         job->state = BG;
     }
     if (!(strcmp(argv[0], "fg"))) {
-        Kill(pid, SIGCONT);
+        Killpg(pid, SIGCONT);
         job_t* job = getjobpid(jobs, pid);
         //printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
         job->state = FG;
