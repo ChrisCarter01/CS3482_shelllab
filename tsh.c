@@ -312,7 +312,7 @@ void sigint_handler(int sig)
 {
     // printf("Handling SIGINT\n");
     pid_t fg = fgpid(jobs);
-    Kill(fg, SIGINT);
+    Killpg(fg, SIGINT);
     return;
 }
 
