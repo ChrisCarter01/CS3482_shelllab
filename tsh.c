@@ -160,6 +160,7 @@ void eval(char *cmdline)
         
         if ((pid = Fork()) == 0) {  
             //This section of code will be executed by the child process.
+            setpgid(0,0);   //Change the program group id for the child, so that SIGINT will be handled correctly.
             Sigprocmask(SIG_SETMASK, &last_set, NULL);  //Restore previous mask for the child
             Exec(argv[0], argv);
         }
@@ -231,14 +232,33 @@ void sigchld_handler(int sig)
 {
     //printf("Handling Child\n");
     int status;
+    sigset_t all_set, last_set;
+    SigFillSet(&all_set);
     pid_t pid = 1;
+
     while(pid > 0) {
         pid = waitpid(-1, &status, WNOHANG | WUNTRACED);
         //printf("PID: %d\nStatus: %d\n", pid, status);
         if(WIFEXITED(status)) {
+            Sigprocmask(SIG_BLOCK, &all_set, &last_set);    //Block all signals
             //Check if the child terminated normally.
             //Remove the child from the job list.
             deletejob(jobs, pid);
+            Sigprocmask(SIG_SETMASK, &last_set, NULL);    //Unblock all signals
+            
+        } else if(WIFSIGNALED(status)) {
+            Sigprocmask(SIG_BLOCK, &all_set, &last_set);    //Block all signals
+            //Check if child terminated abnormally (due to SIGINT or other signal).
+            //printf("Getting Job\n");
+            job_t job = *getjobpid(jobs, pid);
+            //printf("Printing Job\n");
+            printf("Job [%d] (%d) terminated by signal %d\n", job.jid, job.pid, status);
+            //printf("Deleting Job\n");
+            deletejob(jobs, job.pid);
+            //printf("Jobs Done\n");
+            status = 0; //Reset status so this code block will not repeat itself.
+            
+            Sigprocmask(SIG_SETMASK, &last_set, NULL);    //Unblock all signals
         }
     }
 }
@@ -250,6 +270,8 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    pid_t fg = fgpid(jobs);
+    Kill(fg, SIGINT);
     return;
 }
 

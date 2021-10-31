@@ -88,3 +88,9 @@ void SigAddSet(sigset_t* set, int signal) {
         unix_error("SigAddSet Error");
     }
 }
+
+void Kill(pid_t pid, int signal) {
+    if(kill(pid, signal) < 0) {
+        unix_error("Kill Error");
+    }
+}

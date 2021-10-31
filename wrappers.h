@@ -11,3 +11,4 @@ void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 void SigFillSet(sigset_t* set);
 void SigEmptySet(sigset_t* set);
 void SigAddSet(sigset_t* set, int signal);
+void Kill(pid_t pid, int signal);
