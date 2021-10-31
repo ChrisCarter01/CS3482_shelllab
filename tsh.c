@@ -324,7 +324,7 @@ void sigint_handler(int sig)
 void sigtstp_handler(int sig) 
 {
     pid_t fg = fgpid(jobs);
-    Kill(fg, SIGTSTP);
+    Killpg(fg, SIGTSTP);
     return;
 }
 
