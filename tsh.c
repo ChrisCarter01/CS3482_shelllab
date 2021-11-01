@@ -219,7 +219,6 @@ void do_bgfg(char **argv)
     } else {
         //The first arguement corresponds to the job number of the desired process
         int jobid = atoi(argv[1] + 1);
-        // printf("Found JID = %d\n", jobid);
         pid = getjobjid(jobs, jobid)->pid;
     }
     // printf("Found PID = %d\n", pid);
@@ -232,7 +231,6 @@ void do_bgfg(char **argv)
     if (!(strcmp(argv[0], "fg"))) {
         Killpg(pid, SIGCONT);
         job_t* job = getjobpid(jobs, pid);
-        //printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
         job->state = FG;
         waitfg(pid);
     }
